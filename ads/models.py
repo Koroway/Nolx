@@ -1,38 +1,38 @@
 from django.db import models
 
-from django.db import models
-
-class Ad(models.Model):
-    STATUS = [
-        ("true", "Публіковано"),
-        ("false", "Непубліковано"),
-    ]
-
-    name = models.CharField(max_length=3000)
-    author = models.CharField(max_length=3000)
-    price = models.IntegerField()
-    description = models.CharField(max_length=3000)
-    address = models.CharField(max_length=3000)
-    is_published = models.CharField(max_length=5, choices=STATUS, default='false')
-    image = models.ImageField(upload_to='images/')
-    category_id = models.ForeignKey('Category', on_delete=models.CASCADE)
+from users.models import User
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=20)
+
+    class Meta:
+        verbose_name = "Категорія"
+        verbose_name_plural = "Категорії"
+
+    def __str__(self):
+        return self.name
 
 
-class Location(models.Model):
-    name = models.CharField(max_length=200)
-    lat = models.FloatField()
-    lng = models.FloatField()
+class Ad(models.Model):
+    name = models.CharField(max_length=20)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    price = models.PositiveIntegerField()
+    description = models.TextField(max_length=1000, null=True)
+    is_published = models.BooleanField(default=False)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    image = models.ImageField(upload_to="ads/", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Оголошення"
+        verbose_name_plural = "Оголошення"
+
+    def __str__(self):
+        return self.name
 
 
-class User(models.Model):
-    first_name = models.CharField(max_length=200)
-    last_name = models.CharField(max_length=200)
-    username = models.CharField(max_length=200)
-    password = models.CharField(max_length=200)
-    role = models.CharField(max_length=200)
-    age = models.IntegerField()
-    location_id = models.ForeignKey('Location', on_delete=models.CASCADE)
+class Selection(models.Model):
+    name = models.CharField(max_length=20)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    items = models.ManyToManyField(Ad)
+
