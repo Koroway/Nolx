@@ -1,6 +1,19 @@
 from rest_framework import serializers
 
-from ads.models import Ad, Selection
+from ads.models import Ad, Selection, Category
+from users.models import User
+
+
+class NotTrueValidator:
+    def __call__(self, value):
+        if value:
+            raise serializers.ValidationError("New ad can not be published")
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
 
 
 class AdSerializer(serializers.ModelSerializer):
@@ -18,6 +31,14 @@ class AdDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ad
         fields = ["id", "name", "author_id", "author", "price", "description", "is_published", "category_id", "image"]
+
+
+class AdCreateSerializer(serializers.ModelSerializer):
+    is_published = serializers.BooleanField(validators=[NotTrueValidator()])
+
+    class Meta:
+        model = Ad
+        fields = '__all__'
 
 
 class SelectionListSerializer(serializers.ModelSerializer):

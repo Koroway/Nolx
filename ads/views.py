@@ -131,31 +131,35 @@ class CategoryDeleteView(DeleteView):
         return JsonResponse({"status": "ok"}, status=200)
 
 
-class AdView(ListView):
-    models = Ad
+class AdView(ListAPIView):
     queryset = Ad.objects.all()
+    serializer_class = AdSerializer
 
-    def get(self, request, *args, **kwargs):
-        super().get(request, *args, **kwargs)
+    def get_queryset(self):
+        queryset = super().get_queryset()
 
-        categories = request.GET.getlist("cat", [])
+        categories = self.request.GET.getlist("cat", [])
         if categories:
-            self.object_list = self.object_list.filter(category_id__in=categories)
+            queryset = queryset.filter(category_id__in=categories)
 
-        if request.GET.get("text", None):
-            self.object_list = self.object_list.filter(name__icontains=request.GET.get("text"))
+        if self.request.GET.get("text", None):
+            queryset = queryset.filter(name__icontains=self.request.GET.get("text"))
 
-        if request.GET.get("location", None):
-            self.object_list = self.object_list.filter(author__locations__name__icontains=request.GET.get("location"))
+        if self.request.GET.get("location", None):
+            queryset = queryset.filter(author__locations__name__icontains=self.request.GET.get("location"))
 
-        if request.GET.get("price_from", None):
-            self.object_list = self.object_list.filter(price__gte=request.GET.get("price_from"))
+        if self.request.GET.get("price_from", None):
+            queryset = queryset.filter(price__gte=self.request.GET.get("price_from"))
 
-        if request.GET.get("price_to", None):
-            self.object_list = self.object_list.filter(price__lte=request.GET.get("price_to"))
+        if self.request.GET.get("price_to", None):
+            queryset = queryset.filter(price__lte=self.request.GET.get("price_to"))
 
-        self.object_list = self.object_list.select_related('author').order_by("-price")
-        paginator = Paginator(self.object_list, settings.TOTAL_ON_PAGE)
+        return queryset.select_related('author').order_by("-price")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        paginator = Paginator(queryset, settings.TOTAL_ON_PAGE)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
@@ -189,15 +193,15 @@ class AdDetailView(RetrieveAPIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class AdCreateView(CreateView):
+class AdCreateView(CreateAPIView):
     model = Ad
     fields = ["name", "author", "price", "description", "is_published", "category"]
 
     def post(self, request, *args, **kwargs):
         ad_data = json.loads(request.body)
 
-        author = get_object_or_404(User, ad_data["author_id"])
-        category = get_object_or_404(Category, ad_data["category_id"])
+        author = get_object_or_404(User, pk=ad_data["author"])
+        category = get_object_or_404(Category, pk=ad_data["category"])
 
         ad = Ad.objects.create(
             name=ad_data["name"],
@@ -211,14 +215,13 @@ class AdCreateView(CreateView):
         return JsonResponse({
             "id": ad.id,
             "name": ad.name,
-            "author_id": ad.author_id,
-            "author": ad.author.first_name,
+            "author": ad.author_id,
+            "category": ad.category_id,
             "price": ad.price,
             "description": ad.description,
             "is_published": ad.is_published,
-            "category_id": ad.category_id,
             "image": ad.image.url if ad.image else None,
-        })
+        }, status=201)
 
 
 class AdUpdateView(UpdateAPIView):
